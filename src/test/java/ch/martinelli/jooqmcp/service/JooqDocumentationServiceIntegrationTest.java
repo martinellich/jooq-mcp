@@ -53,7 +53,8 @@ class JooqDocumentationServiceIntegrationTest {
         String result = documentationService.getSqlExamples("SELECT");
         assertNotNull(result);
         assertTrue(result.contains("jOOQ Examples") || 
-                   result.contains("Unable to fetch"));
+                   result.contains("No SQL examples found") ||
+                   result.contains("Error fetching"));
         System.out.println("SQL Examples result:\n" + result);
     }
 }

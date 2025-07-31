@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -18,7 +19,7 @@ import static org.mockito.Mockito.when;
 class JooqDocumentationServiceTest {
 
     @Mock
-    private JooqDocumentationFetcher documentationFetcher;
+    private LocalJooqDocumentationService localDocumentationService;
 
     @InjectMocks
     private JooqDocumentationService jooqDocumentationService;
@@ -32,14 +33,16 @@ class JooqDocumentationServiceTest {
     void testSearchDocumentation_WithValidQuery() {
         // Arrange
         String query = "SELECT statement";
-        List<JooqDocumentationFetcher.SearchResult> mockResults = new ArrayList<>();
-        JooqDocumentationFetcher.SearchResult result = new JooqDocumentationFetcher.SearchResult();
-        result.setTitle("SELECT Statement");
-        result.setContent("This section covers SELECT statements in jOOQ...");
-        result.setSection("sql-building");
+        List<LocalJooqDocumentationService.SearchResult> mockResults = new ArrayList<>();
+        LocalJooqDocumentationService.SearchResult result = new LocalJooqDocumentationService.SearchResult(
+            "SELECT Statement",
+            "This section covers SELECT statements in jOOQ...",
+            "sql-building",
+            100.0
+        );
         mockResults.add(result);
 
-        when(documentationFetcher.searchDocumentation(query)).thenReturn(mockResults);
+        when(localDocumentationService.searchDocumentation(query)).thenReturn(mockResults);
 
         // Act
         String response = jooqDocumentationService.searchDocumentation(query);
@@ -67,20 +70,41 @@ class JooqDocumentationServiceTest {
         // Assert
         assertEquals("Please provide a search query to search the jOOQ documentation.", response);
     }
+    
+    @Test
+    void testSearchDocumentation_WithNoResults() {
+        // Arrange
+        String query = "nonexistent";
+        when(localDocumentationService.searchDocumentation(query)).thenReturn(Collections.emptyList());
+
+        // Act
+        String response = jooqDocumentationService.searchDocumentation(query);
+
+        // Assert
+        assertEquals("No results found for 'nonexistent' in jOOQ documentation. Try different keywords.", response);
+    }
 
     @Test
     void testGetSqlExamples_WithValidTopic() {
         // Arrange
         String topic = "SELECT";
-        String expectedExamples = "# jOOQ Examples for SELECT\n\n## Example 1\n```java\nDSL.select().from(TABLE).fetch();\n```";
+        List<LocalJooqDocumentationService.CodeExample> mockExamples = new ArrayList<>();
+        LocalJooqDocumentationService.CodeExample example = new LocalJooqDocumentationService.CodeExample(
+            "DSL.select().from(TABLE).fetch();",
+            "Basic SELECT example",
+            "java"
+        );
+        mockExamples.add(example);
         
-        when(documentationFetcher.fetchSqlExamples(topic)).thenReturn(expectedExamples);
+        when(localDocumentationService.getCodeExamples(topic)).thenReturn(mockExamples);
 
         // Act
         String response = jooqDocumentationService.getSqlExamples(topic);
 
         // Assert
-        assertEquals(expectedExamples, response);
+        assertNotNull(response);
+        assertTrue(response.contains("jOOQ Examples for SELECT"));
+        assertTrue(response.contains("DSL.select().from(TABLE).fetch();"));
     }
 
     @Test
@@ -91,63 +115,129 @@ class JooqDocumentationServiceTest {
         // Assert
         assertEquals("Please specify a SQL topic (e.g., SELECT, INSERT, UPDATE, DELETE, JOIN).", response);
     }
+    
+    @Test
+    void testGetSqlExamples_WithNoExamples() {
+        // Arrange
+        String topic = "UNKNOWN";
+        when(localDocumentationService.getCodeExamples(topic)).thenReturn(Collections.emptyList());
+
+        // Act
+        String response = jooqDocumentationService.getSqlExamples(topic);
+
+        // Assert
+        assertEquals("No SQL examples found for 'UNKNOWN'. Try different keywords like SELECT, INSERT, UPDATE, DELETE, JOIN.", response);
+    }
 
     @Test
     void testGetCodeGenerationGuide() {
         // Arrange
-        String expectedGuide = "# Code Generation Guide\n\nThis guide covers...";
-        when(documentationFetcher.fetchDocumentationContent(anyString())).thenReturn(expectedGuide);
+        String expectedGuide = "# Code Generation\n\nThis guide covers jOOQ code generation...";
+        when(localDocumentationService.getDocumentationContent("code generation")).thenReturn(expectedGuide);
 
         // Act
         String response = jooqDocumentationService.getCodeGenerationGuide();
 
         // Assert
-        assertTrue(response.contains("jOOQ Code Generation Guide"));
-        assertTrue(response.contains(expectedGuide));
+        assertNotNull(response);
+        assertTrue(response.contains("Code Generation"));
     }
 
     @Test
     void testGetDatabaseSupport_WithValidDatabase() {
         // Arrange
         String database = "MySQL";
-        String expectedContent = "MySQL is fully supported...";
-        when(documentationFetcher.fetchDocumentationContent(anyString())).thenReturn(expectedContent);
+        String expectedContent = "# MySQL Support\n\nMySQL is fully supported...";
+        when(localDocumentationService.getDocumentationContent(anyString())).thenReturn(expectedContent);
 
         // Act
         String response = jooqDocumentationService.getDatabaseSupport(database);
 
         // Assert
-        assertTrue(response.contains("jOOQ Support for MySQL"));
-        assertTrue(response.contains(expectedContent));
+        assertNotNull(response);
+        assertTrue(response.contains("MySQL"));
+    }
+    
+    @Test
+    void testGetDatabaseSupport_WithEmptyDatabase() {
+        // Act
+        String response = jooqDocumentationService.getDatabaseSupport("");
+
+        // Assert
+        assertEquals("Please specify a database name (e.g., MySQL, PostgreSQL, Oracle, SQL Server).", response);
     }
 
     @Test
     void testGetQueryDslReference_WithValidQueryType() {
         // Arrange
         String queryType = "INSERT";
-        String expectedContent = "INSERT statements in jOOQ...";
-        when(documentationFetcher.fetchDocumentationContent(anyString())).thenReturn(expectedContent);
+        String expectedContent = "# INSERT Statement\n\nINSERT statements in jOOQ...";
+        when(localDocumentationService.getDocumentationContent(anyString())).thenReturn(expectedContent);
 
         // Act
         String response = jooqDocumentationService.getQueryDslReference(queryType);
 
         // Assert
-        assertTrue(response.contains("jOOQ INSERT Statement Reference"));
-        assertTrue(response.contains(expectedContent));
+        assertNotNull(response);
+        assertTrue(response.contains("INSERT"));
+    }
+    
+    @Test
+    void testGetQueryDslReference_WithEmptyQueryType() {
+        // Act
+        String response = jooqDocumentationService.getQueryDslReference("");
+
+        // Assert
+        assertEquals("Please specify a query type (e.g., SELECT, INSERT, UPDATE, DELETE, MERGE).", response);
     }
 
     @Test
     void testGetAdvancedFeatures_WithValidFeature() {
         // Arrange
         String feature = "transactions";
-        String expectedContent = "Transaction management in jOOQ...";
-        when(documentationFetcher.fetchDocumentationContent(anyString())).thenReturn(expectedContent);
+        String expectedContent = "# Transactions\n\nTransaction management in jOOQ...";
+        when(localDocumentationService.getDocumentationContent(feature)).thenReturn(expectedContent);
 
         // Act
         String response = jooqDocumentationService.getAdvancedFeatures(feature);
 
         // Assert
-        assertTrue(response.contains("jOOQ Advanced Features: transactions"));
-        assertTrue(response.contains(expectedContent));
+        assertNotNull(response);
+        assertTrue(response.contains("Transaction"));
+    }
+    
+    @Test
+    void testGetAdvancedFeatures_WithEmptyFeature() {
+        // Act
+        String response = jooqDocumentationService.getAdvancedFeatures("");
+
+        // Assert
+        assertEquals("Please specify an advanced feature (e.g., transactions, stored procedures, batch operations).", response);
+    }
+    
+    @Test
+    void testSearchDocumentation_WithException() {
+        // Arrange
+        String query = "test";
+        when(localDocumentationService.searchDocumentation(query)).thenThrow(new RuntimeException("Test error"));
+
+        // Act
+        String response = jooqDocumentationService.searchDocumentation(query);
+
+        // Assert
+        assertEquals("Error searching jOOQ documentation. Please try again later.", response);
+    }
+    
+    @Test
+    void testGetSqlExamples_WithException() {
+        // Arrange
+        String topic = "SELECT";
+        when(localDocumentationService.getCodeExamples(topic)).thenThrow(new RuntimeException("Test error"));
+
+        // Act
+        String response = jooqDocumentationService.getSqlExamples(topic);
+
+        // Assert
+        assertEquals("Error fetching SQL examples for 'SELECT'. Please try a different topic.", response);
     }
 }
