@@ -1,8 +1,6 @@
 package ch.martinelli.jooqmcp.service;
 
 import org.springframework.ai.tool.annotation.Tool;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,12 +12,10 @@ import java.util.stream.Collectors;
 public class JooqDocumentationService {
     
     private static final Logger logger = LoggerFactory.getLogger(JooqDocumentationService.class);
-    private static final String JOOQ_BASE_URL = "https://www.jooq.org/doc/3.21/manual/";
-    
-    private final JooqDocumentationFetcher documentationFetcher;
+    private final LocalJooqDocumentationService localDocumentationService;
 
-    public JooqDocumentationService(JooqDocumentationFetcher documentationFetcher) {
-        this.documentationFetcher = documentationFetcher;
+    public JooqDocumentationService(LocalJooqDocumentationService localDocumentationService) {
+        this.localDocumentationService = localDocumentationService;
     }
 
     @Tool(description = "Search jOOQ documentation for specific topics, features, or SQL operations. Returns relevant documentation sections.")
@@ -31,21 +27,32 @@ public class JooqDocumentationService {
         }
         
         try {
-            List<JooqDocumentationFetcher.SearchResult> results = documentationFetcher.searchDocumentation(query);
+            List<LocalJooqDocumentationService.SearchResult> results = localDocumentationService.searchDocumentation(query);
             
             if (results.isEmpty()) {
-                return String.format("No results found for '%s' in jOOQ documentation. Try different keywords or check the manual at %s", query, JOOQ_BASE_URL);
+                return String.format("No results found for '%s' in jOOQ documentation. Try different keywords.", query);
             }
             
             StringBuilder response = new StringBuilder();
             response.append(String.format("Found %d results for '%s':\n\n", results.size(), query));
             
-            for (int i = 0; i < Math.min(5, results.size()); i++) {
-                JooqDocumentationFetcher.SearchResult result = results.get(i);
+            for (int i = 0; i < Math.min(3, results.size()); i++) {
+                LocalJooqDocumentationService.SearchResult result = results.get(i);
                 response.append(String.format("%d. **%s**\n", i + 1, result.getTitle()));
-                response.append(String.format("   %s\n", result.getContent().length() > 200 ? 
-                    result.getContent().substring(0, 200) + "..." : result.getContent()));
+                
+                // Limit content size to prevent buffer overflow
+                String content = result.getContent();
+                if (content.length() > 300) {
+                    content = content.substring(0, 300) + "...";
+                }
+                response.append(String.format("   %s\n", content));
                 response.append(String.format("   Section: %s\n\n", result.getSection()));
+                
+                // Prevent response from getting too large
+                if (response.length() > 2000) {
+                    response.append("[Additional results truncated - try more specific search terms]\n");
+                    break;
+                }
             }
             
             return response.toString();
@@ -64,10 +71,51 @@ public class JooqDocumentationService {
         }
         
         try {
-            return documentationFetcher.fetchSqlExamples(topic);
+            List<LocalJooqDocumentationService.CodeExample> examples = localDocumentationService.getCodeExamples(topic);
+            
+            if (examples.isEmpty()) {
+                return String.format("No SQL examples found for '%s'. Try different keywords like SELECT, INSERT, UPDATE, DELETE, JOIN.", topic);
+            }
+            
+            StringBuilder response = new StringBuilder();
+            response.append(String.format("# jOOQ Examples for %s\n\n", topic));
+            
+            // Limit to fewer examples to prevent buffer overflow
+            int maxExamples = Math.min(3, examples.size());
+            for (int i = 0; i < maxExamples; i++) {
+                LocalJooqDocumentationService.CodeExample example = examples.get(i);
+                response.append(String.format("## Example %d\n", i + 1));
+                
+                if (!example.getContext().isEmpty() && example.getContext().length() <= 200) {
+                    response.append(example.getContext()).append("\n\n");
+                }
+                
+                // Limit code size to prevent buffer overflow
+                String code = example.getCode();
+                if (code.length() > 500) {
+                    code = code.substring(0, 500) + "\n// ... [Code truncated]";
+                }
+                
+                response.append("```").append(example.getLanguage()).append("\n");
+                response.append(code);
+                response.append("\n```\n\n");
+                
+                // Prevent response from getting too large
+                if (response.length() > 2500) {
+                    response.append("[Additional examples truncated to prevent buffer overflow]\n");
+                    break;
+                }
+            }
+            
+            if (examples.size() > maxExamples) {
+                response.append(String.format("[%d additional examples available - use more specific search terms]\n", 
+                    examples.size() - maxExamples));
+            }
+            
+            return response.toString();
         } catch (Exception e) {
             logger.error("Error fetching SQL examples", e);
-            return String.format("Error fetching SQL examples for '%s'. Please try a different topic or check the manual at %s", topic, JOOQ_BASE_URL);
+            return String.format("Error fetching SQL examples for '%s'. Please try a different topic.", topic);
         }
     }
 
@@ -76,13 +124,15 @@ public class JooqDocumentationService {
         logger.info("Fetching jOOQ code generation guide");
         
         try {
-            String url = JOOQ_BASE_URL + "code-generation/";
-            String content = documentationFetcher.fetchDocumentationContent(url);
-            
-            return "# jOOQ Code Generation Guide\n\n" + content;
+            String content = localDocumentationService.getDocumentationContent("code generation");
+            // Ensure content doesn't exceed safe limits
+            if (content.length() > 3000) {
+                content = content.substring(0, 3000) + "\n\n[Content truncated for size limits]";
+            }
+            return content;
         } catch (Exception e) {
             logger.error("Error fetching code generation guide", e);
-            return "Error fetching code generation guide. For manual access, visit: " + JOOQ_BASE_URL + "code-generation/";
+            return "Error fetching code generation guide. Please try a different search term.";
         }
     }
 
@@ -95,11 +145,20 @@ public class JooqDocumentationService {
         }
         
         try {
-            String normalizedDb = database.toLowerCase().replace(" ", "-");
-            String url = JOOQ_BASE_URL + "sql-dialects/" + normalizedDb + "/";
-            String content = documentationFetcher.fetchDocumentationContent(url);
+            String searchTerm = database + " dialect";
+            String content = localDocumentationService.getDocumentationContent(searchTerm);
             
-            return String.format("# jOOQ Support for %s\n\n%s", database, content);
+            if (content.startsWith("No documentation found")) {
+                // Try alternative search terms
+                content = localDocumentationService.getDocumentationContent(database);
+            }
+            
+            // Ensure content doesn't exceed safe limits
+            if (content.length() > 3000) {
+                content = content.substring(0, 3000) + "\n\n[Content truncated for size limits]";
+            }
+            
+            return content;
         } catch (Exception e) {
             logger.error("Error fetching database support info", e);
             return String.format("Error fetching support information for '%s'. Supported databases include MySQL, PostgreSQL, Oracle, SQL Server, H2, and many others.", database);
@@ -115,11 +174,20 @@ public class JooqDocumentationService {
         }
         
         try {
-            String normalizedType = queryType.toLowerCase().replace(" ", "-");
-            String url = JOOQ_BASE_URL + "sql-building/" + normalizedType + "-statement/";
-            String content = documentationFetcher.fetchDocumentationContent(url);
+            String searchTerm = queryType + " statement";
+            String content = localDocumentationService.getDocumentationContent(searchTerm);
             
-            return String.format("# jOOQ %s Statement Reference\n\n%s", queryType.toUpperCase(), content);
+            if (content.startsWith("No documentation found")) {
+                // Try alternative search terms
+                content = localDocumentationService.getDocumentationContent(queryType);
+            }
+            
+            // Ensure content doesn't exceed safe limits
+            if (content.length() > 3000) {
+                content = content.substring(0, 3000) + "\n\n[Content truncated for size limits]";
+            }
+            
+            return content;
         } catch (Exception e) {
             logger.error("Error fetching Query DSL reference", e);
             return String.format("Error fetching DSL reference for '%s'. Available query types: SELECT, INSERT, UPDATE, DELETE, MERGE.", queryType);
@@ -135,22 +203,14 @@ public class JooqDocumentationService {
         }
         
         try {
-            String normalizedFeature = feature.toLowerCase().replace(" ", "-");
-            String section = "sql-execution"; // Most advanced features are in this section
+            String content = localDocumentationService.getDocumentationContent(feature);
             
-            // Map common features to their documentation paths
-            if (normalizedFeature.contains("transaction")) {
-                section = "sql-execution/transaction-management";
-            } else if (normalizedFeature.contains("stored") || normalizedFeature.contains("procedure")) {
-                section = "sql-execution/stored-procedures";
-            } else if (normalizedFeature.contains("batch")) {
-                section = "sql-execution/batch-execution";
+            // Ensure content doesn't exceed safe limits
+            if (content.length() > 3000) {
+                content = content.substring(0, 3000) + "\n\n[Content truncated for size limits]";
             }
             
-            String url = JOOQ_BASE_URL + section + "/";
-            String content = documentationFetcher.fetchDocumentationContent(url);
-            
-            return String.format("# jOOQ Advanced Features: %s\n\n%s", feature, content);
+            return content;
         } catch (Exception e) {
             logger.error("Error fetching advanced features documentation", e);
             return String.format("Error fetching documentation for '%s'. Common advanced features include: transactions, stored procedures, batch operations, streaming, reactive execution.", feature);
