@@ -13,22 +13,51 @@
         }
 
         :root {
-            --primary-color: #3b82f6;
-            --secondary-color: #60a5fa;
-            --dark-bg: #1a1a1a;
-            --light-bg: #2d2d2d;
-            --text-primary: #ffffff;
-            --text-secondary: #b0b0b0;
-            --code-bg: #0d1117;
-            --border-color: #3d3d3d;
+            --primary-gradient-start: #8B5CF6;
+            --primary-gradient-end: #7C3AED;
+            --accent-color: #F59E0B;
+            --accent-hover: #F97316;
+            --success-color: #10B981;
+            --dark-bg: #0F0F14;
+            --light-bg: #1A1A23;
+            --card-bg: rgba(26, 26, 35, 0.6);
+            --text-primary: #F9FAFB;
+            --text-secondary: #9CA3AF;
+            --text-muted: #6B7280;
+            --code-bg: #0D0D12;
+            --border-color: rgba(139, 92, 246, 0.2);
+            --glass-bg: rgba(255, 255, 255, 0.02);
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background-color: var(--dark-bg);
             color: var(--text-primary);
             line-height: 1.6;
             overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Background gradient animation */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(124, 58, 237, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 20%, rgba(245, 158, 11, 0.05) 0%, transparent 50%);
+            z-index: -1;
+            animation: gradientShift 20s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(-20px, -20px) rotate(120deg); }
+            66% { transform: translate(20px, -10px) rotate(240deg); }
         }
 
         .container {
@@ -39,87 +68,188 @@
 
         /* Navigation */
         nav {
-            background-color: rgba(26, 26, 26, 0.95);
-            backdrop-filter: blur(10px);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             position: fixed;
             width: 100%;
             top: 0;
             z-index: 1000;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--glass-border);
         }
 
         nav .container {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem 20px;
+            padding: 1.2rem 20px;
         }
 
         .logo {
             font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--primary-color);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
         }
 
         .nav-links {
             display: flex;
-            gap: 2rem;
+            gap: 2.5rem;
             list-style: none;
         }
 
         .nav-links a {
             color: var(--text-secondary);
             text-decoration: none;
-            transition: color 0.3s;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary-gradient-start), var(--primary-gradient-end));
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .nav-links a:hover {
-            color: var(--primary-color);
+            color: var(--text-primary);
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
         }
 
         /* Hero Section */
         .hero {
-            padding: 120px 0 80px;
+            padding: 140px 0 100px;
             text-align: center;
-            background: linear-gradient(135deg, var(--dark-bg) 0%, var(--light-bg) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+            animation: heroGlow 15s ease-in-out infinite;
+        }
+
+        @keyframes heroGlow {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-10%, -10%) scale(1.1); }
         }
 
         .hero h1 {
-            font-size: 3.5rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 50%, var(--accent-color) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            letter-spacing: -1px;
+            position: relative;
+            z-index: 1;
         }
 
         .hero .tagline {
             font-size: 1.5rem;
             color: var(--text-secondary);
             margin-bottom: 2rem;
+            font-weight: 400;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero .tagline a {
+            color: var(--primary-gradient-start);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .hero .tagline a:hover {
+            color: var(--accent-color);
         }
 
         .hero .description {
-            font-size: 1.1rem;
+            font-size: 1.125rem;
             max-width: 800px;
             margin: 0 auto 3rem;
             color: var(--text-secondary);
+            line-height: 1.8;
+            position: relative;
+            z-index: 1;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, var(--success-color), #059669);
+            color: white;
+            padding: 6px 16px 6px 36px;
+            border-radius: 24px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        .status-badge::before {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); }
+            50% { opacity: 0.8; transform: translateY(-50%) scale(1.2); }
         }
 
         /* Sections */
         section {
-            padding: 80px 0;
+            padding: 100px 0;
+            position: relative;
         }
 
         section:nth-child(even) {
-            background-color: var(--light-bg);
+            background: linear-gradient(180deg, transparent 0%, var(--light-bg) 50%, transparent 100%);
         }
 
         h2 {
-            font-size: 2.5rem;
-            margin-bottom: 2rem;
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 3rem;
             text-align: center;
-            color: var(--primary-color);
+            background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
         }
 
         /* Feature Grid */
@@ -131,72 +261,152 @@
         }
 
         .feature-card {
-            background-color: var(--light-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 2rem;
-            transition: transform 0.3s, box-shadow 0.3s;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 2.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary-gradient-start), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .feature-card:hover::before {
+            transform: translateX(100%);
         }
 
         .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+            transform: translateY(-4px);
+            border-color: var(--border-color);
+            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.15);
         }
 
         .feature-card h3 {
-            color: var(--secondary-color);
+            font-size: 1.5rem;
+            font-weight: 600;
             margin-bottom: 1rem;
-            font-size: 1.3rem;
+            background: linear-gradient(135deg, var(--primary-gradient-start), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .feature-card p {
             color: var(--text-secondary);
             line-height: 1.8;
+            font-size: 1rem;
         }
 
         /* Code Blocks */
         .code-block {
-            background-color: var(--code-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
+            background: var(--code-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
             padding: 1.5rem;
             margin: 1.5rem 0;
             overflow-x: auto;
             position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
 
         .code-block pre {
-            color: #e6e6e6;
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            color: #e4e4e7;
+            font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
             font-size: 0.9rem;
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
         .copy-button {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: var(--primary-color);
+            top: 12px;
+            right: 12px;
+            background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
             color: white;
             border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
+            padding: 8px 16px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 0.8rem;
-            transition: background-color 0.3s;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);
         }
 
         .copy-button:hover {
-            background-color: var(--secondary-color);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(139, 92, 246, 0.4);
         }
 
+        .copy-button:active {
+            transform: translateY(0);
+        }
+
+        /* About section */
+        #about p {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+            color: var(--text-secondary);
+            line-height: 1.8;
+            font-size: 1.125rem;
+        }
+
+        /* Installation steps */
+        .installation-step {
+            margin: 3rem 0;
+        }
+
+        .installation-step h3 {
+            color: var(--accent-color);
+            margin: 2rem 0 1rem;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .installation-step p {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
 
         /* Footer */
         footer {
-            background-color: var(--code-bg);
-            padding: 3rem 0;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 4rem 0;
             text-align: center;
-            border-top: 1px solid var(--border-color);
+            border-top: 1px solid var(--glass-border);
+            position: relative;
+        }
+
+        footer p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        footer a {
+            color: var(--primary-gradient-start);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        footer a:hover {
+            color: var(--accent-color);
         }
 
         /* Responsive */
@@ -206,7 +416,11 @@
             }
 
             .hero .tagline {
-                font-size: 1.2rem;
+                font-size: 1.25rem;
+            }
+
+            h2 {
+                font-size: 2rem;
             }
 
             .nav-links {
@@ -222,26 +436,55 @@
         /* Animations */
         .fade-in {
             opacity: 0;
-            transform: translateY(20px);
-            animation: fadeIn 0.8s ease-out forwards;
+            transform: translateY(30px);
+            animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
 
-        @keyframes fadeIn {
+        @keyframes fadeInUp {
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
 
-        .status-badge {
-            display: inline-block;
-            background-color: #10b981;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            margin-left: 10px;
-            margin-bottom: 20px;
+        /* Geometric patterns */
+        .geometric-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+            z-index: -1;
+            opacity: 0.03;
+        }
+
+        .geometric-bg::before,
+        .geometric-bg::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border: 2px solid var(--primary-gradient-start);
+            border-radius: 20% 30% 40% 50%;
+        }
+
+        .geometric-bg::before {
+            top: -100px;
+            right: -100px;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .geometric-bg::after {
+            bottom: -100px;
+            left: -100px;
+            animation: float 20s infinite ease-in-out reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
         }
     </style>
 </head>
@@ -258,13 +501,14 @@
     </nav>
 
     <section class="hero">
+        <div class="geometric-bg"></div>
         <div class="container fade-in">
             <span class="status-badge">Active</span>
             <h1>jOOQ MCP Server</h1>
-            <p class="tagline">AI-Powered Access to <a href="https://jooq.org/" style="color: var(--text-secondary); text-decoration: none;">jOOQ</a> Documentation</p>
+            <p class="tagline">AI-Powered Access to <a href="https://jooq.org/">jOOQ</a> Documentation</p>
             <p class="description">
                 A Model Context Protocol (MCP) server that provides AI systems with intelligent access to jOOQ documentation, 
-                code examples, and database-specific guidance. Built with Spring AI for seamless integration.
+                code examples, and database-specific guidance.
             </p>
         </div>
     </section>
@@ -273,7 +517,7 @@
         <div class="container">
             <h2>What is MCP?</h2>
             <div class="fade-in">
-                <p style="text-align: center; max-width: 800px; margin: 0 auto; color: var(--text-secondary); line-height: 1.8;">
+                <p>
                     Model Context Protocol (MCP) is a standardized protocol that allows AI models to interact with external tools and data sources. 
                     This MCP server specializes in providing comprehensive jOOQ documentation access, enabling AI assistants to help developers 
                     with SQL query building, database operations, and jOOQ best practices.
@@ -336,22 +580,25 @@
         <div class="container">
             <h2>How to Use</h2>
             <div class="fade-in">
-                <h3 style="color: var(--primary-color); margin: 2rem 0 1rem;">Install in Claude Code</h3>
-                <p style="margin-bottom: 1rem; color: var(--text-secondary);">
-                    If you use Claude Code, you can add it with this command:
-                </p>
-                <div class="code-block">
-                    <button class="copy-button" onclick="copyCode(this)">Copy</button>
-                    <pre>claude mcp add --transport sse jOOQ https://jooq-mcp.fly.dev/sse</pre>
+                <div class="installation-step">
+                    <h3>Install in Claude Code</h3>
+                    <p>
+                        If you use Claude Code, you can add it with this command:
+                    </p>
+                    <div class="code-block">
+                        <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                        <pre>claude mcp add --transport sse jOOQ https://jooq-mcp.fly.dev/sse</pre>
+                    </div>
                 </div>
 
-                <h3 style="color: var(--primary-color); margin: 2rem 0 1rem;">Install using JSON</h3>
-                <p style="margin: 2rem 0 1rem; color: var(--text-secondary);">
-                    If you can't use SSE transport directly, you can use it with mcp remote:
-                </p>
-                <div class="code-block">
-                    <button class="copy-button" onclick="copyCode(this)">Copy</button>
-                    <pre>{
+                <div class="installation-step">
+                    <h3>Install using JSON</h3>
+                    <p>
+                        If you can't use SSE transport directly, you can use it with mcp remote:
+                    </p>
+                    <div class="code-block">
+                        <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                        <pre>{
   "mcpServers": {
     "jOOQ": {
       "command": "npx",
@@ -365,34 +612,39 @@
     }
   }
 }</pre>
+                    </div>
                 </div>
 
-                <h3 style="color: var(--primary-color); margin: 3rem 0 1rem;">Example Queries</h3>
-                <p style="margin-bottom: 1rem; color: var(--text-secondary);">
-                    Once installed, you can ask questions like:
-                </p>
-                <div class="code-block">
-                    <button class="copy-button" onclick="copyCode(this)">Copy</button>
-                    <pre># Example queries you can ask:
+                <div class="installation-step">
+                    <h3>Example Queries</h3>
+                    <p>
+                        Once installed, you can ask questions like:
+                    </p>
+                    <div class="code-block">
+                        <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                        <pre># Example queries you can ask:
 "How do I create a SELECT statement in jOOQ?"
 "Show me examples of jOOQ INSERT operations"
 "What databases does jOOQ support?"
 "How do I configure jOOQ code generation?"
 "How do I use transactions in jOOQ?"</pre>
+                    </div>
                 </div>
 
-                <h3 style="color: var(--primary-color); margin: 3rem 0 1rem;">Self-Hosting</h3>
-                <p style="margin-bottom: 1rem; color: var(--text-secondary);">
-                    Want to run your own instance? It's easy:
-                </p>
-                <div class="code-block">
-                    <button class="copy-button" onclick="copyCode(this)">Copy</button>
-                    <pre># Clone and run the server
+                <div class="installation-step">
+                    <h3>Self-Hosting</h3>
+                    <p>
+                        Want to run your own instance? It's easy:
+                    </p>
+                    <div class="code-block">
+                        <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                        <pre># Clone and run the server
 git clone &lt;repository-url&gt;
 cd jooq-mcp
 ./mvnw spring-boot:run
 
 # The server will start on port 8080</pre>
+                    </div>
                 </div>
             </div>
         </div>
@@ -401,11 +653,11 @@ cd jooq-mcp
 
     <footer>
         <div class="container">
-            <p style="color: var(--text-secondary);">
+            <p>
                 Built with Spring Boot 3.5.4 and Spring AI 1.0.0
             </p>
-            <p style="color: var(--text-secondary); margin-top: 1rem;">
-                Created by <a href="https://martinelli.ch" target="_blank" style="color: var(--primary-color); text-decoration: none;">Simon Martinelli</a>
+            <p style="margin-top: 1rem;">
+                Created by <a href="https://martinelli.ch" target="_blank">Simon Martinelli</a>
             </p>
         </div>
     </footer>
@@ -450,7 +702,7 @@ cd jooq-mcp
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    entry.target.style.animationDelay = '0.2s';
+                    entry.target.style.animationDelay = '0.1s';
                     entry.target.classList.add('fade-in');
                 }
             });
@@ -462,6 +714,13 @@ cd jooq-mcp
                 el.style.opacity = '0';
                 observer.observe(el);
             }
+        });
+
+        // Observe feature cards
+        document.querySelectorAll('.feature-card').forEach((el, index) => {
+            el.style.opacity = '0';
+            el.style.animationDelay = `${index * 0.1}s`;
+            observer.observe(el);
         });
     </script>
 </body>
