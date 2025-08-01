@@ -2,9 +2,485 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>jOOQ MCP Server</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="jOOQ MCP Server - Model Context Protocol server providing AI access to jOOQ documentation">
+    <title>jOOQ MCP Server - AI-Powered jOOQ Documentation Access</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #ff6d00;
+            --secondary-color: #ff8f00;
+            --dark-bg: #1a1a1a;
+            --light-bg: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --code-bg: #0d1117;
+            --border-color: #3d3d3d;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--dark-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Navigation */
+        nav {
+            background-color: rgba(26, 26, 26, 0.95);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 20px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 120px 0 80px;
+            text-align: center;
+            background: linear-gradient(135deg, var(--dark-bg) 0%, var(--light-bg) 100%);
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .tagline {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .hero .description {
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto 3rem;
+            color: var(--text-secondary);
+        }
+
+        /* Sections */
+        section {
+            padding: 80px 0;
+        }
+
+        section:nth-child(even) {
+            background-color: var(--light-bg);
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            color: var(--primary-color);
+        }
+
+        /* Feature Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background-color: var(--light-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 109, 0, 0.2);
+        }
+
+        .feature-card h3 {
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background-color: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block pre {
+            color: #e6e6e6;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background-color 0.3s;
+        }
+
+        .copy-button:hover {
+            background-color: var(--secondary-color);
+        }
+
+
+        /* Footer */
+        footer {
+            background-color: var(--code-bg);
+            padding: 3rem 0;
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: var(--primary-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero .tagline {
+                font-size: 1.2rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+        }
+
+        /* Animations */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .status-badge {
+            display: inline-block;
+            background-color: #10b981;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-left: 10px;
+        }
+    </style>
 </head>
 <body>
-<h1>jOOQ MCP Server</h1>
+    <nav>
+        <div class="container">
+            <div class="logo">jOOQ MCP</div>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#how-to-use">How to Use</a></li>
+                <li><a href="#about">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="container fade-in">
+            <h1>jOOQ MCP Server</h1>
+            <p class="tagline">AI-Powered Access to jOOQ Documentation</p>
+            <p class="description">
+                A Model Context Protocol (MCP) server that provides AI systems with intelligent access to jOOQ documentation, 
+                code examples, and database-specific guidance. Built with Spring AI for seamless integration.
+            </p>
+            <span class="status-badge">Active</span>
+        </div>
+    </section>
+
+    <section id="about">
+        <div class="container">
+            <h2>What is MCP?</h2>
+            <div class="fade-in">
+                <p style="text-align: center; max-width: 800px; margin: 0 auto; color: var(--text-secondary); line-height: 1.8;">
+                    Model Context Protocol (MCP) is a standardized protocol that allows AI models to interact with external tools and data sources. 
+                    This MCP server specializes in providing comprehensive jOOQ documentation access, enabling AI assistants to help developers 
+                    with SQL query building, database operations, and jOOQ best practices.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section id="features">
+        <div class="container">
+            <h2>Available Tools</h2>
+            <div class="features-grid fade-in">
+                <div class="feature-card">
+                    <h3>searchDocumentation</h3>
+                    <p>
+                        Search through jOOQ documentation using advanced full-text search with TF-IDF scoring. 
+                        Find relevant information about any jOOQ feature, SQL operation, or concept quickly.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <h3>getSqlExamples</h3>
+                    <p>
+                        Retrieve practical SQL examples for specific operations like SELECT, INSERT, UPDATE, DELETE, 
+                        and JOIN. Get real-world code snippets to accelerate development.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <h3>getCodeGenerationGuide</h3>
+                    <p>
+                        Access comprehensive documentation about jOOQ's code generation capabilities. Learn how to 
+                        configure and use the code generator for your database schema.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <h3>getDatabaseSupport</h3>
+                    <p>
+                        Get database-specific information for MySQL, PostgreSQL, Oracle, SQL Server, and more. 
+                        Understand dialect differences and database-specific features.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <h3>getQueryDslReference</h3>
+                    <p>
+                        Access detailed Query DSL reference for specific statement types. Master the jOOQ DSL 
+                        with comprehensive documentation for each query type.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <h3>getAdvancedFeatures</h3>
+                    <p>
+                        Explore advanced jOOQ features like transactions, stored procedures, batch operations, 
+                        and reactive execution patterns.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="how-to-use">
+        <div class="container">
+            <h2>How to Use</h2>
+            <div class="fade-in">
+                <h3 style="color: var(--primary-color); margin: 2rem 0 1rem;">Install in Claude Code</h3>
+                <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                    If you use Claude Code, you can add it with this command:
+                </p>
+                <div class="code-block">
+                    <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                    <pre>claude mcp add --transport sse jOOQ https://jooq-mcp.fly.dev/sse</pre>
+                </div>
+
+                <h3 style="color: var(--primary-color); margin: 2rem 0 1rem;">Install using JSON</h3>
+                <p style="margin: 2rem 0 1rem; color: var(--text-secondary);">
+                    If you can't use SSE transport directly, you can use it with mcp remote:
+                </p>
+                <div class="code-block">
+                    <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                    <pre>{
+  "mcpServers": {
+    "jOOQ": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://jooq-mcp.fly.dev/sse",
+        "--transport",
+        "sse-only"
+      ]
+    }
+  }
+}</pre>
+                </div>
+
+                <h3 style="color: var(--primary-color); margin: 3rem 0 1rem;">Example Queries</h3>
+                <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                    Once installed, you can ask questions like:
+                </p>
+                <div class="code-block">
+                    <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                    <pre># Example queries you can ask:
+"How do I create a SELECT statement in jOOQ?"
+"Show me examples of jOOQ INSERT operations"
+"What databases does jOOQ support?"
+"How do I configure jOOQ code generation?"
+"How do I use transactions in jOOQ?"</pre>
+                </div>
+
+                <h3 style="color: var(--primary-color); margin: 3rem 0 1rem;">Self-Hosting</h3>
+                <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                    Want to run your own instance? It's easy:
+                </p>
+                <div class="code-block">
+                    <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                    <pre># Clone and run the server
+git clone &lt;repository-url&gt;
+cd jooq-mcp
+./mvnw spring-boot:run
+
+# The server will start on port 8080</pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="https://www.jooq.org/" target="_blank">jOOQ Official Site</a>
+                <a href="https://github.com/jOOQ/jOOQ" target="_blank">jOOQ GitHub</a>
+                <a href="https://docs.spring.io/spring-ai/reference/" target="_blank">Spring AI Docs</a>
+            </div>
+            <p style="color: var(--text-secondary);">
+                Built with Spring Boot 3.5.4 and Spring AI 1.0.0
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Copy code functionality
+        function copyCode(button) {
+            const codeBlock = button.parentElement.querySelector('pre');
+            const textArea = document.createElement('textarea');
+            textArea.value = codeBlock.textContent;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            button.textContent = 'Copied!';
+            setTimeout(() => {
+                button.textContent = 'Copy';
+            }, 2000);
+        }
+
+        // Intersection Observer for fade-in animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animationDelay = '0.2s';
+                    entry.target.classList.add('fade-in');
+                }
+            });
+        }, observerOptions);
+
+        // Observe all sections for animation
+        document.querySelectorAll('section > .container > *').forEach(el => {
+            if (!el.classList.contains('fade-in')) {
+                el.style.opacity = '0';
+                observer.observe(el);
+            }
+        });
+    </script>
 </body>
 </html>
