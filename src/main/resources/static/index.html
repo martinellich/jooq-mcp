@@ -199,23 +199,6 @@
             border-top: 1px solid var(--border-color);
         }
 
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .footer-links a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            transition: color 0.3s;
-        }
-
-        .footer-links a:hover {
-            color: var(--primary-color);
-        }
-
         /* Responsive */
         @media (max-width: 768px) {
             .hero h1 {
@@ -278,7 +261,7 @@
         <div class="container fade-in">
             <span class="status-badge">Active</span>
             <h1>jOOQ MCP Server</h1>
-            <p class="tagline">AI-Powered Access to jOOQ Documentation</p>
+            <p class="tagline">AI-Powered Access to <a href="https://jooq.org/" style="color: var(--text-secondary); text-decoration: none;">jOOQ</a> Documentation</p>
             <p class="description">
                 A Model Context Protocol (MCP) server that provides AI systems with intelligent access to jOOQ documentation, 
                 code examples, and database-specific guidance. Built with Spring AI for seamless integration.
@@ -418,11 +401,6 @@ cd jooq-mcp
 
     <footer>
         <div class="container">
-            <div class="footer-links">
-                <a href="https://www.jooq.org/" target="_blank">jOOQ Official Site</a>
-                <a href="https://github.com/jOOQ/jOOQ" target="_blank">jOOQ GitHub</a>
-                <a href="https://docs.spring.io/spring-ai/reference/" target="_blank">Spring AI Docs</a>
-            </div>
             <p style="color: var(--text-secondary);">
                 Built with Spring Boot 3.5.4 and Spring AI 1.0.0
             </p>
