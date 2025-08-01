@@ -40,6 +40,41 @@ The MCP server provides the following tools:
 
 The MCP server will start and be available for connections from MCP clients.
 
+### Docker Deployment
+
+1. **Build the JAR file:**
+   ```bash
+   ./mvnw clean package
+   ```
+
+2. **Build the Docker image:**
+   ```bash
+   docker build -t jooq-mcp .
+   ```
+
+3. **Run the Docker container:**
+   ```bash
+   docker run -p 8080:8080 jooq-mcp
+   ```
+
+### Fly.io Deployment
+
+This application is configured for deployment on Fly.io:
+
+1. **Install Fly CLI and authenticate:**
+   ```bash
+   brew install flyctl  # or your preferred installation method
+   fly auth login
+   ```
+
+2. **Deploy the application:**
+   ```bash
+   ./mvnw clean package
+   fly deploy
+   ```
+
+The application includes health checks at `/actuator/health` and is configured with auto-scaling.
+
 ### Using with MCP Clients
 
 This server can be used with any MCP-compatible AI client. The server exposes tools that allow AI models to:
@@ -64,6 +99,16 @@ spring.ai.mcp.server.capabilities.tool=true
 # Cache Configuration
 spring.cache.type=caffeine
 spring.cache.caffeine.spec=maximumSize=100,expireAfterWrite=1h
+
+# jOOQ Documentation Crawler Configuration
+jooq.documentation.crawler.max-depth=4
+jooq.documentation.crawler.max-urls-per-section=100
+jooq.documentation.crawler.timeout-ms=10000
+jooq.documentation.crawler.cache-duration-hours=24
+
+# Server Configuration - SSE Buffer Settings
+server.tomcat.max-http-response-header-size=64KB
+server.tomcat.max-swallow-size=10MB
 ```
 
 ### Example Usage
@@ -82,10 +127,20 @@ The server will fetch the relevant documentation and provide detailed answers wi
 
 The application consists of:
 
-- **JooqDocumentationService**: Main service class with @Tool annotated methods
-- **JooqDocumentationFetcher**: Handles fetching and parsing jOOQ documentation
+- **JooqDocumentationService**: Main service class with @Tool annotated methods for MCP integration
+- **LocalJooqDocumentationService**: Provides local documentation indexing and full-text search with TF-IDF scoring
+- **InvertedIndex**: Implements advanced full-text search capabilities with relevance scoring
+- **JooqDocumentationCrawler**: Crawls and fetches jOOQ documentation for local storage
+- **JooqDocumentationFetcher**: Handles parsing and extraction of documentation content
 - **McpConfiguration**: Spring configuration for MCP tool registration
 - **Caching**: Caffeine-based caching to improve performance
+
+### Key Features
+
+- **Local Documentation Storage**: Documentation is stored locally in `src/main/resources/docs/` for faster access
+- **Full-Text Search**: Advanced search using TF-IDF scoring for better relevance
+- **Efficient Indexing**: In-memory inverted index for fast document retrieval
+- **Code Example Extraction**: Automatic extraction and categorization of code examples
 
 ## Testing
 
