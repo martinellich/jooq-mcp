@@ -127,7 +127,10 @@ public class JooqDocumentationService {
             String content = localDocumentationService.getDocumentationContent("code generation");
             // Ensure content doesn't exceed safe limits
             if (content.length() > 3000) {
-                content = content.substring(0, 3000) + "\n\n[Content truncated for size limits]";
+                content = """
+                        %s
+                        
+                        [Content truncated for size limits]""".formatted(content.substring(0, 3000));
             }
             return content;
         } catch (Exception e) {
@@ -155,7 +158,10 @@ public class JooqDocumentationService {
             
             // Ensure content doesn't exceed safe limits
             if (content.length() > 3000) {
-                content = content.substring(0, 3000) + "\n\n[Content truncated for size limits]";
+                content = """
+                        %s
+                        
+                        [Content truncated for size limits]""".formatted(content.substring(0, 3000));
             }
             
             return content;

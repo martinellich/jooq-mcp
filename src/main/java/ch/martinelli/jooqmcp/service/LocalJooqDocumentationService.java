@@ -27,12 +27,10 @@ public class LocalJooqDocumentationService {
     private Resource documentationFile;
     
     private Document fullDocument;
-    private Map<String, DocumentationSection> sectionsByTitle = new ConcurrentHashMap<>();
-    private Map<String, DocumentationSection> sectionsById = new ConcurrentHashMap<>();
-    private List<String> allSectionTexts = new ArrayList<>();
-    private Map<String, List<CodeExample>> codeExamplesByTopic = new ConcurrentHashMap<>();
-    private InvertedIndex searchIndex = new InvertedIndex();
-    private Map<String, List<SearchResult>> searchCache = new ConcurrentHashMap<>();
+    private final Map<String, DocumentationSection> sectionsByTitle = new ConcurrentHashMap<>();
+    private final Map<String, List<CodeExample>> codeExamplesByTopic = new ConcurrentHashMap<>();
+    private final InvertedIndex searchIndex = new InvertedIndex();
+    private final Map<String, List<SearchResult>> searchCache = new ConcurrentHashMap<>();
 
     public static class DocumentationSection {
         private final String id;
@@ -136,7 +134,7 @@ public class LocalJooqDocumentationService {
             
             // Update breadcrumb stack
             while (breadcrumbStack.size() >= level) {
-                breadcrumbStack.remove(breadcrumbStack.size() - 1);
+                breadcrumbStack.removeLast();
             }
             breadcrumbStack.add(title);
             
@@ -149,11 +147,6 @@ public class LocalJooqDocumentationService {
             extractCodeExamples(header, section);
             
             sectionsByTitle.put(title.toLowerCase(), section);
-            if (id != null && !id.isEmpty()) {
-                sectionsById.put(id, section);
-            }
-            
-            allSectionTexts.add(title + " " + sectionContent);
         }
     }
 
@@ -243,16 +236,8 @@ public class LocalJooqDocumentationService {
     }
 
     private void buildSearchIndex() {
-        // Pre-build commonly searched terms for faster lookup
-        Map<String, List<DocumentationSection>> commonTerms = new HashMap<>();
-        String[] searchTerms = {
-            "select", "insert", "update", "delete", "join", "where", "group by", "order by",
-            "transaction", "batch", "code generation", "dialect", "dsl", "record", "table"
-        };
-        
-        for (String term : searchTerms) {
-            commonTerms.put(term, searchSections(term, Integer.MAX_VALUE));
-        }
+        // This method is kept for potential future use but currently not needed
+        // as the InvertedIndex handles all search functionality
     }
     
     private void buildInvertedIndex() {
@@ -285,10 +270,10 @@ public class LocalJooqDocumentationService {
                 return new SearchResult(section.getTitle(), snippet, section.getBreadcrumb(), 
                                      match.getScore(), match.getMatchedTerms());
             })
-            .collect(Collectors.toList());
+            .toList();
         
         // Cache results for frequently searched terms
-        if (results.size() > 0) {
+        if (!results.isEmpty()) {
             searchCache.put(normalizedQuery, results);
             
             // Limit cache size
@@ -318,52 +303,9 @@ public class LocalJooqDocumentationService {
                 return Integer.compare(s1.getLevel(), s2.getLevel());
             })
             .limit(limit)
-            .collect(Collectors.toList());
+            .toList();
     }
 
-    private double calculateRelevanceScore(DocumentationSection section, String query) {
-        double score = 0.0;
-        String title = section.getTitle().toLowerCase();
-        String content = section.getContent().toLowerCase();
-        
-        // Title exact match
-        if (title.equals(query)) score += 100;
-        // Title contains query
-        else if (title.contains(query)) score += 50;
-        
-        // Content contains query
-        long contentMatches = content.split(query, -1).length - 1;
-        score += contentMatches * 10;
-        
-        // Boost shorter sections (more focused)
-        score += Math.max(0, 50 - section.getContent().length() / 20);
-        
-        // Boost higher-level sections
-        score += (7 - section.getLevel()) * 5;
-        
-        return score;
-    }
-
-    private String createSnippet(String content, String query) {
-        if (content.length() <= 200) {
-            return content;
-        }
-        
-        int queryIndex = content.toLowerCase().indexOf(query.toLowerCase());
-        if (queryIndex == -1) {
-            return content.substring(0, 200) + "...";
-        }
-        
-        int start = Math.max(0, queryIndex - 50);
-        int end = Math.min(content.length(), queryIndex + query.length() + 150);
-        
-        String snippet = content.substring(start, end);
-        if (start > 0) snippet = "..." + snippet;
-        if (end < content.length()) snippet = snippet + "...";
-        
-        return snippet;
-    }
-    
     private String createEnhancedSnippet(String content, String query, Set<String> matchedTerms) {
         if (content.length() <= 300) {
             return TextProcessor.highlightTerms(content, matchedTerms);
@@ -477,7 +419,9 @@ public class LocalJooqDocumentationService {
             }
             
             if (section.getCodeExamples().size() > maxExamples) {
-                formatted.append(String.format("[%d additional examples available - use more specific search terms]\n", 
+                formatted.append(String.format("""
+                                [%d additional examples available - use more specific search terms]
+                                """,
                     section.getCodeExamples().size() - maxExamples));
             }
         }

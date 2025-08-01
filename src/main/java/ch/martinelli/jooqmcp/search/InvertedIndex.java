@@ -58,19 +58,16 @@ public class InvertedIndex {
         private final IndexedDocument document;
         private final double score;
         private final Set<String> matchedTerms;
-        private final Map<String, Integer> termMatches;
         
-        public SearchMatch(IndexedDocument document, double score, Set<String> matchedTerms, Map<String, Integer> termMatches) {
+        public SearchMatch(IndexedDocument document, double score, Set<String> matchedTerms) {
             this.document = document;
             this.score = score;
             this.matchedTerms = matchedTerms;
-            this.termMatches = termMatches;
         }
         
         public IndexedDocument getDocument() { return document; }
         public double getScore() { return score; }
         public Set<String> getMatchedTerms() { return matchedTerms; }
-        public Map<String, Integer> getTermMatches() { return termMatches; }
     }
     
     /**
@@ -138,8 +135,7 @@ public class InvertedIndex {
                 double score = calculateScore(doc, parsedQuery);
                 if (score > 0) {
                     Set<String> matchedTerms = findMatchedTerms(doc, parsedQuery);
-                    Map<String, Integer> termMatches = calculateTermMatches(doc, parsedQuery);
-                    matches.add(new SearchMatch(doc, score, matchedTerms, termMatches));
+                    matches.add(new SearchMatch(doc, score, matchedTerms));
                 }
             }
         }
@@ -148,7 +144,7 @@ public class InvertedIndex {
         return matches.stream()
                 .sorted(Comparator.comparingDouble(SearchMatch::getScore).reversed())
                 .limit(maxResults)
-                .collect(Collectors.toList());
+                .toList();
     }
     
     /**
@@ -308,22 +304,6 @@ public class InvertedIndex {
         }
         
         return matched;
-    }
-    
-    /**
-     * Calculate how many times each query term appears in the document
-     */
-    private Map<String, Integer> calculateTermMatches(IndexedDocument doc, SearchQuery query) {
-        Map<String, Integer> matches = new HashMap<>();
-        
-        for (String term : query.getTerms()) {
-            Map<String, Integer> termDocs = termFrequencies.get(term);
-            if (termDocs != null && termDocs.containsKey(doc.getId())) {
-                matches.put(term, termDocs.get(doc.getId()));
-            }
-        }
-        
-        return matches;
     }
     
     /**
