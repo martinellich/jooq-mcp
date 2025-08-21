@@ -26,11 +26,12 @@ public class LocalJooqDocumentationService {
     @Value("classpath:docs/manual-single-page.html")
     private Resource documentationFile;
     
-    private Document fullDocument;
     private final Map<String, DocumentationSection> sectionsByTitle = new ConcurrentHashMap<>();
     private final Map<String, List<CodeExample>> codeExamplesByTopic = new ConcurrentHashMap<>();
     private final InvertedIndex searchIndex = new InvertedIndex();
     private final Map<String, List<SearchResult>> searchCache = new ConcurrentHashMap<>();
+    private static final int MAX_CACHE_SIZE = 50;
+    private static final int MAX_CONTENT_LENGTH = 5000;
 
     public static class DocumentationSection {
         private final String id;
@@ -105,10 +106,13 @@ public class LocalJooqDocumentationService {
             logger.info("Loading jOOQ documentation from local HTML file...");
             long startTime = System.currentTimeMillis();
             
-            fullDocument = Jsoup.parse(documentationFile.getInputStream(), "UTF-8", "");
-            parseDocumentSections();
-            buildSearchIndex();
+            Document fullDocument = Jsoup.parse(documentationFile.getInputStream(), "UTF-8", "");
+            parseDocumentSections(fullDocument);
             buildInvertedIndex();
+            
+            // Clear the document to free memory after parsing
+            fullDocument = null;
+            System.gc();
             
             long loadTime = System.currentTimeMillis() - startTime;
             Map<String, Object> indexStats = searchIndex.getStatistics();
@@ -121,7 +125,7 @@ public class LocalJooqDocumentationService {
         }
     }
 
-    private void parseDocumentSections() {
+    private void parseDocumentSections(Document fullDocument) {
         Elements headers = fullDocument.select("h1, h2, h3, h4, h5, h6");
         List<String> breadcrumbStack = new ArrayList<>();
         
@@ -151,22 +155,35 @@ public class LocalJooqDocumentationService {
     }
 
     private String extractSectionContent(Element header) {
-        StringBuilder content = new StringBuilder();
+        StringBuilder content = new StringBuilder(1000);
         Element nextElement = header.nextElementSibling();
+        int totalLength = 0;
         
-        while (nextElement != null && !nextElement.tagName().matches("h[1-6]")) {
+        while (nextElement != null && !nextElement.tagName().matches("h[1-6]") && totalLength < MAX_CONTENT_LENGTH) {
+            String text = null;
             if (nextElement.tagName().equals("p")) {
-                content.append(nextElement.text()).append("\n\n");
+                text = nextElement.text();
+                if (!text.isEmpty() && totalLength + text.length() < MAX_CONTENT_LENGTH) {
+                    content.append(text).append("\n\n");
+                    totalLength += text.length();
+                }
             } else if (nextElement.tagName().equals("ul") || nextElement.tagName().equals("ol")) {
                 Elements items = nextElement.select("li");
                 for (Element item : items) {
-                    content.append("• ").append(item.text()).append("\n");
+                    text = item.text();
+                    if (totalLength + text.length() + 2 < MAX_CONTENT_LENGTH) {
+                        content.append("• ").append(text).append("\n");
+                        totalLength += text.length() + 2;
+                    } else {
+                        break;
+                    }
                 }
                 content.append("\n");
             } else if (!nextElement.tagName().equals("pre") && !nextElement.tagName().equals("code")) {
-                String text = nextElement.text().trim();
-                if (!text.isEmpty()) {
+                text = nextElement.text().trim();
+                if (!text.isEmpty() && totalLength + text.length() < MAX_CONTENT_LENGTH) {
                     content.append(text).append("\n\n");
+                    totalLength += text.length();
                 }
             }
             nextElement = nextElement.nextElementSibling();
@@ -235,10 +252,6 @@ public class LocalJooqDocumentationService {
         }
     }
 
-    private void buildSearchIndex() {
-        // This method is kept for potential future use but currently not needed
-        // as the InvertedIndex handles all search functionality
-    }
     
     private void buildInvertedIndex() {
         // Add all sections to the inverted index
@@ -276,10 +289,16 @@ public class LocalJooqDocumentationService {
         if (!results.isEmpty()) {
             searchCache.put(normalizedQuery, results);
             
-            // Limit cache size
-            if (searchCache.size() > 100) {
-                String oldestKey = searchCache.keySet().iterator().next();
-                searchCache.remove(oldestKey);
+            // Limit cache size more aggressively
+            if (searchCache.size() > MAX_CACHE_SIZE) {
+                // Remove half of the cache entries when limit is reached
+                Iterator<String> iterator = searchCache.keySet().iterator();
+                int toRemove = searchCache.size() / 2;
+                while (iterator.hasNext() && toRemove > 0) {
+                    iterator.next();
+                    iterator.remove();
+                    toRemove--;
+                }
             }
         }
         
