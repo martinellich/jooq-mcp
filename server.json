@@ -1,0 +1,17 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "ch.martinelli/jooq-mcp",
+  "description": "An MCP server that provides access to the jOOQ documentation",
+  "status": "active",
+  "repository": {
+    "url": "https://github.com/martinellich/jooq-mcp",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "remotes": [
+    {
+      "type": "sse",
+      "url": "https://jooq-mcp.martinelli.ch/sse"
+    }
+  ]
+}

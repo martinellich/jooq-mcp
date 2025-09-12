@@ -41,11 +41,6 @@
 			<artifactId>spring-boot-starter-cache</artifactId>
 		</dependency>
 
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-actuator</artifactId>
-		</dependency>
-
 		<!-- JSoup for HTML parsing -->
 		<dependency>
 			<groupId>org.jsoup</groupId>
@@ -64,11 +59,8 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-actuator</artifactId>
-		</dependency>
 	</dependencies>
+
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
