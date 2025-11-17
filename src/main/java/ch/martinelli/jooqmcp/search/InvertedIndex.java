@@ -30,28 +30,51 @@ public class InvertedIndex {
     public static class IndexedDocument {
         private final String id;
         private final DocumentationSection section;
-        private final List<String> titleTokens;
-        private final List<String> contentTokens;
-        private final Set<String> allTokens;
-        private final List<String> phrases;
+        private Set<String> titleTokens;
+        private Set<String> allTokens;
+        private List<String> phrases;
         
         public IndexedDocument(String id, DocumentationSection section) {
             this.id = id;
             this.section = section;
-            this.titleTokens = TextProcessor.processText(section.getTitle());
-            this.contentTokens = TextProcessor.processText(section.getContent());
-            this.allTokens = new HashSet<>();
-            this.allTokens.addAll(titleTokens);
-            this.allTokens.addAll(contentTokens);
-            this.phrases = TextProcessor.extractPhrases(section.getTitle() + " " + section.getContent());
+            // Lazy initialization to save memory
+        }
+        
+        private void ensureTokensInitialized() {
+            if (titleTokens == null) {
+                titleTokens = new HashSet<>(TextProcessor.processText(section.getTitle()));
+                Set<String> contentTokens = new HashSet<>(TextProcessor.processText(section.getContent()));
+                allTokens = new HashSet<>();
+                allTokens.addAll(titleTokens);
+                allTokens.addAll(contentTokens);
+            }
+        }
+        
+        private void ensurePhrasesInitialized() {
+            if (phrases == null) {
+                String combinedText = section.getTitle() + " " + section.getContent();
+                // Limit phrase extraction to first 2000 chars to save memory
+                if (combinedText.length() > 2000) {
+                    combinedText = combinedText.substring(0, 2000);
+                }
+                phrases = TextProcessor.extractPhrases(combinedText);
+            }
         }
         
         public String getId() { return id; }
         public DocumentationSection getSection() { return section; }
-        public List<String> getTitleTokens() { return titleTokens; }
-        public List<String> getContentTokens() { return contentTokens; }
-        public Set<String> getAllTokens() { return allTokens; }
-        public List<String> getPhrases() { return phrases; }
+        public Set<String> getTitleTokens() { 
+            ensureTokensInitialized();
+            return titleTokens; 
+        }
+        public Set<String> getAllTokens() { 
+            ensureTokensInitialized();
+            return allTokens; 
+        }
+        public List<String> getPhrases() { 
+            ensurePhrasesInitialized();
+            return phrases; 
+        }
     }
     
     public static class SearchMatch {
@@ -79,16 +102,19 @@ public class InvertedIndex {
         
         documents.put(docId, indexedDoc);
         
-        // Count all tokens for TF calculation
-        List<String> allTokens = new ArrayList<>();
-        allTokens.addAll(indexedDoc.getTitleTokens());
-        allTokens.addAll(indexedDoc.getContentTokens());
+        // Count tokens directly from section text to avoid storing duplicates
+        List<String> titleTokens = TextProcessor.processText(section.getTitle());
+        List<String> contentTokens = TextProcessor.processText(section.getContent());
         
-        documentWordCounts.put(docId, allTokens.size());
+        int totalTokens = titleTokens.size() + contentTokens.size();
+        documentWordCounts.put(docId, totalTokens);
         
         // Build term frequency map for this document
         Map<String, Integer> docTermFreq = new HashMap<>();
-        for (String token : allTokens) {
+        for (String token : titleTokens) {
+            docTermFreq.merge(token, 1, Integer::sum);
+        }
+        for (String token : contentTokens) {
             docTermFreq.merge(token, 1, Integer::sum);
         }
         
@@ -101,8 +127,12 @@ public class InvertedIndex {
                           .put(docId, frequency);
         }
         
-        // Index phrases
-        for (String phrase : indexedDoc.getPhrases()) {
+        // Index phrases with memory limit
+        List<String> phrases = indexedDoc.getPhrases();
+        // Limit to first 10 phrases per document to save memory
+        int phraseLimit = Math.min(10, phrases.size());
+        for (int i = 0; i < phraseLimit; i++) {
+            String phrase = phrases.get(i);
             phraseIndex.computeIfAbsent(phrase.toLowerCase(), k -> new HashSet<>()).add(docId);
         }
         
