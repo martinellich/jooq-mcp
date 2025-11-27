@@ -29,8 +29,23 @@ public class LocalJooqDocumentationService {
     private final Map<String, DocumentationSection> sectionsByTitle = new ConcurrentHashMap<>();
     private final Map<String, List<CodeExample>> codeExamplesByTopic = new ConcurrentHashMap<>();
     private final InvertedIndex searchIndex = new InvertedIndex();
-    private final Map<String, List<SearchResult>> searchCache = new ConcurrentHashMap<>();
+    private final Map<String, CacheEntry> searchCache = new ConcurrentHashMap<>();
     private static final int MAX_CACHE_SIZE = 50;
+    private static final long CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+
+    private static class CacheEntry {
+        final List<SearchResult> results;
+        final long timestamp;
+
+        CacheEntry(List<SearchResult> results) {
+            this.results = results;
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        boolean isExpired() {
+            return System.currentTimeMillis() - timestamp > CACHE_EXPIRY_MS;
+        }
+    }
     private static final int MAX_CONTENT_LENGTH = 5000;
 
     public static class DocumentationSection {
@@ -264,44 +279,59 @@ public class LocalJooqDocumentationService {
         if (query == null || query.trim().isEmpty()) {
             return Collections.emptyList();
         }
-        
+
         String normalizedQuery = query.toLowerCase().trim();
-        
-        // Check cache first
-        List<SearchResult> cachedResults = searchCache.get(normalizedQuery);
-        if (cachedResults != null) {
-            return cachedResults;
+
+        // Check cache first and validate expiry
+        CacheEntry cached = searchCache.get(normalizedQuery);
+        if (cached != null) {
+            if (!cached.isExpired()) {
+                return cached.results;
+            } else {
+                // Remove expired entry
+                searchCache.remove(normalizedQuery);
+            }
         }
-        
+
+        // Clean up expired entries periodically
+        if (searchCache.size() > MAX_CACHE_SIZE / 2) {
+            searchCache.entrySet().removeIf(entry -> entry.getValue().isExpired());
+        }
+
         // Use advanced search with inverted index
         List<InvertedIndex.SearchMatch> matches = searchIndex.search(query, 10);
-        
+
         List<SearchResult> results = matches.stream()
             .map(match -> {
                 DocumentationSection section = match.getDocument().getSection();
                 String snippet = createEnhancedSnippet(section.getContent(), normalizedQuery, match.getMatchedTerms());
-                return new SearchResult(section.getTitle(), snippet, section.getBreadcrumb(), 
+                return new SearchResult(section.getTitle(), snippet, section.getBreadcrumb(),
                                      match.getScore(), match.getMatchedTerms());
             })
             .toList();
-        
-        // Cache results for frequently searched terms
+
+        // Cache results with timestamp
         if (!results.isEmpty()) {
-            searchCache.put(normalizedQuery, results);
-            
+            searchCache.put(normalizedQuery, new CacheEntry(results));
+
             // Limit cache size more aggressively
             if (searchCache.size() > MAX_CACHE_SIZE) {
-                // Remove half of the cache entries when limit is reached
-                Iterator<String> iterator = searchCache.keySet().iterator();
-                int toRemove = searchCache.size() / 2;
-                while (iterator.hasNext() && toRemove > 0) {
-                    iterator.next();
-                    iterator.remove();
-                    toRemove--;
+                // Remove oldest/expired entries first
+                searchCache.entrySet().removeIf(entry -> entry.getValue().isExpired());
+
+                // If still too large, remove half
+                if (searchCache.size() > MAX_CACHE_SIZE) {
+                    Iterator<String> iterator = searchCache.keySet().iterator();
+                    int toRemove = searchCache.size() / 2;
+                    while (iterator.hasNext() && toRemove > 0) {
+                        iterator.next();
+                        iterator.remove();
+                        toRemove--;
+                    }
                 }
             }
         }
-        
+
         return results;
     }
 

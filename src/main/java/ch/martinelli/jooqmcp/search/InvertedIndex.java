@@ -219,24 +219,17 @@ public class InvertedIndex {
      */
     private Set<String> findCandidateDocuments(SearchQuery query) {
         Set<String> candidates = new HashSet<>();
-        
+
         // Find documents matching terms
         for (String term : query.getTerms()) {
             Map<String, Integer> termDocs = termFrequencies.get(term);
             if (termDocs != null) {
                 candidates.addAll(termDocs.keySet());
             }
-            
-            // Also try fuzzy matching for typo tolerance
-            for (String indexedTerm : termFrequencies.keySet()) {
-                double similarity = TextProcessor.fuzzyMatchScore(term, indexedTerm);
-                if (similarity > 0.8) { // 80% similarity threshold
-                    Map<String, Integer> fuzzyDocs = termFrequencies.get(indexedTerm);
-                    if (fuzzyDocs != null) {
-                        candidates.addAll(fuzzyDocs.keySet());
-                    }
-                }
-            }
+
+            // Fuzzy matching disabled - it creates memory pressure by iterating
+            // over all terms and computing Levenshtein distances.
+            // The synonym expansion in query parsing provides sufficient flexibility.
         }
         
         // Find documents matching phrases
