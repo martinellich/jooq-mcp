@@ -22,8 +22,11 @@ This is a Spring Boot application designed to implement a Model Context Protocol
 # Run the application
 ./mvnw spring-boot:run
 
-# Run tests
+# Run unit tests
 ./mvnw test
+
+# Run integration tests locally (requires OPENAI_API_KEY and PINECONE_API_KEY)
+./mvnw verify -DskipITs=false
 
 # Package as JAR
 ./mvnw package

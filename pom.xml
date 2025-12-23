@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>ch.martinelli</groupId>
 	<artifactId>jooq-mcp</artifactId>
-	<version>2.0.0</version>
+	<version>2.0.1</version>
 	<name>jooq-mcp</name>
 	<url/>
 	<licenses>
@@ -29,14 +29,13 @@
 		<java.version>21</java.version>
 		<spring-ai.version>1.1.0</spring-ai.version>
 		<gitflow.version>1.21.0</gitflow.version>
+		<skipITs>true</skipITs>
 	</properties>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
 		</dependency>
-
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-actuator</artifactId>
@@ -82,10 +81,41 @@
 	</dependencyManagement>
 
 	<build>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>true</filtering>
+				<includes>
+					<include>static/index.html</include>
+				</includes>
+			</resource>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>false</filtering>
+				<excludes>
+					<exclude>static/index.html</exclude>
+				</excludes>
+			</resource>
+		</resources>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<configuration>
+					<skipITs>${skipITs}</skipITs>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>integration-test</goal>
+							<goal>verify</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>com.amashchenko.maven.plugin</groupId>
