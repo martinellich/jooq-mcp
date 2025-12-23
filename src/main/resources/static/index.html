@@ -703,6 +703,25 @@
                 </div>
 
                 <div class="installation-step">
+                    <h3>Install using JSON</h3>
+                    <div class="code-block">
+                        <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                        <pre>{
+  "mcpServers": {
+    "jOOQ": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://jooq-mcp.martinelli.ch/mcp"
+      ]
+    }
+  }
+}</pre>
+                    </div>
+                </div>
+
+                <div class="installation-step">
                     <h3>Example Queries</h3>
                     <p>
                         Once installed, you can ask questions like:
