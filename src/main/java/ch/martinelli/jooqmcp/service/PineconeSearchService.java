@@ -23,6 +23,7 @@ import java.util.Map;
 public class PineconeSearchService {
 
     private static final Logger logger = LoggerFactory.getLogger(PineconeSearchService.class);
+    private static final double MIN_SCORE_THRESHOLD = 0.5; // Filter out low-relevance results
 
     private final Index pineconeIndex;
     private final OpenAiEmbeddingService embeddingService;
@@ -141,6 +142,14 @@ public class PineconeSearchService {
         List<SearchResult> results = new ArrayList<>();
 
         for (ScoredVectorWithUnsignedIndices match : matches) {
+            double score = match.getScore();
+
+            // Filter out low-relevance results
+            if (score < MIN_SCORE_THRESHOLD) {
+                logger.debug("Filtering out result with score {} (below threshold {})", score, MIN_SCORE_THRESHOLD);
+                continue;
+            }
+
             Struct metadata = match.getMetadata();
             if (metadata == null) {
                 continue;
@@ -151,7 +160,6 @@ public class PineconeSearchService {
             String content = getStringValue(metadata, "content", "");
             String breadcrumb = getStringValue(metadata, "breadcrumb", "");
             String language = getStringValue(metadata, "language", "text");
-            double score = match.getScore();
 
             results.add(new SearchResult(id, title, content, breadcrumb, score, language));
         }
