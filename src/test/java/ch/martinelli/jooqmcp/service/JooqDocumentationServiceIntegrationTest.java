@@ -1,17 +1,20 @@
 package ch.martinelli.jooqmcp.service;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.TestPropertySource;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Integration tests that require OPENAI_API_KEY and PINECONE_API_KEY environment variables.
+ * These tests will only run when the API keys are available.
+ */
 @SpringBootTest
-@TestPropertySource(properties = {
-    "jooq.documentation.crawler.max-depth=4",
-    "jooq.documentation.crawler.max-urls-per-section=10"
-})
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "PINECONE_API_KEY", matches = ".+")
 class JooqDocumentationServiceIntegrationTest {
 
     @Autowired

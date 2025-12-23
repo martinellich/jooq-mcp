@@ -2,12 +2,19 @@ package ch.martinelli.jooqmcp;
 
 import ch.martinelli.jooqmcp.service.JooqDocumentationService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests that require OPENAI_API_KEY and PINECONE_API_KEY environment variables.
+ */
 @SpringBootTest
+@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "PINECONE_API_KEY", matches = ".+")
 public class BufferSizeTest {
 
     @Autowired
