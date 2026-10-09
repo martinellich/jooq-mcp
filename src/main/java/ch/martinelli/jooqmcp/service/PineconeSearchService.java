@@ -50,7 +50,7 @@ public class PineconeSearchService {
         QueryResponseWithUnsignedIndices response = pineconeIndex.queryByVector(
                 limit,
                 queryEmbedding,
-                true,  // include values
+                false, // include values - we only read metadata, so skip the 1536 floats per hit
                 true   // include metadata
         );
 
@@ -87,7 +87,7 @@ public class PineconeSearchService {
                 queryEmbedding,
                 "",    // default namespace
                 filter,
-                true,  // include values
+                false, // include values - we only read metadata, so skip the 1536 floats per hit
                 true   // include metadata
         );
 
@@ -118,7 +118,6 @@ public class PineconeSearchService {
 
             // Store keywords as a list
             if (chunk.keywords() != null && !chunk.keywords().isEmpty()) {
-                Value.Builder listBuilder = Value.newBuilder();
                 var listValue = com.google.protobuf.ListValue.newBuilder();
                 for (String keyword : chunk.keywords()) {
                     listValue.addValues(Value.newBuilder().setStringValue(keyword).build());
