@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>ch.martinelli</groupId>
 	<artifactId>jooq-mcp</artifactId>
-	<version>3.1.2</version>
+	<version>3.1.3-SNAPSHOT</version>
 	<name>jooq-mcp</name>
 	<url/>
 	<licenses>
