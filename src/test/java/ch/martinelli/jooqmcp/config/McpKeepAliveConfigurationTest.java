@@ -21,8 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * Without a keep-alive interval the server never writes to an idle SSE stream, so it
  * never learns that a client is gone: the async request stays open for the lifetime of
  * the process. Clients are not required to send DELETE /mcp, and in practice they don't,
- * so a failing keep-alive ping is what ends a dead stream. Leaving this unset leaked
- * roughly 16 HTTP connections per hour in production until the heap ran out.
+ * so a failing keep-alive ping is what ends a dead stream. Note that a failed ping does
+ * not remove the session; see McpTransportConfiguration for the idle timeout that does.
  * <p>
  * A misspelled property would bind to nothing and silently disable keep-alive again,
  * which is exactly what this test exists to catch.
