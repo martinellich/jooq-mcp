@@ -41,13 +41,6 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
-		<!-- JSoup for HTML parsing -->
-		<dependency>
-			<groupId>org.jsoup</groupId>
-			<artifactId>jsoup</artifactId>
-			<version>1.23.2</version>
-		</dependency>
-
 		<!-- Spring AI OpenAI for embeddings -->
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
