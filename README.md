@@ -155,7 +155,6 @@ Run the test suite:
 The application uses:
 - Spring Boot 3.5.4
 - Spring AI 1.0.0 with MCP Server support
-- JSoup for HTML parsing
 - Caffeine for caching
 
 To add new tools, create methods annotated with `@Tool` in the `JooqDocumentationService` class.

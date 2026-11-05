@@ -3,10 +3,6 @@ package ch.martinelli.jooqmcp.cli;
 import ch.martinelli.jooqmcp.model.DocumentChunk;
 import ch.martinelli.jooqmcp.service.OpenAiEmbeddingService;
 import ch.martinelli.jooqmcp.service.PineconeSearchService;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,9 +11,14 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * One-time CLI command to generate embeddings and seed Pinecone index.
@@ -37,7 +38,7 @@ public class EmbeddingGeneratorCommand implements ApplicationRunner {
     @Value("${embedding.chunk-overlap:200}")
     private int chunkOverlap;
 
-    @Value("classpath:docs/manual-single-page.html")
+    @Value("${embedding.manual-url}")
     private Resource documentationFile;
 
     private final OpenAiEmbeddingService embeddingService;
@@ -66,11 +67,15 @@ public class EmbeddingGeneratorCommand implements ApplicationRunner {
 
             // Generate embeddings
             List<String> contents = chunks.stream()
-                    .map(DocumentChunk::content)
+                    .map(EmbeddingGeneratorCommand::embeddingText)
                     .toList();
 
             logger.info("Generating embeddings for {} chunks...", contents.size());
             List<List<Float>> embeddings = embeddingService.generateEmbeddings(contents);
+
+            // Replace the index content, so that chunks of the previous manual don't linger
+            logger.info("Deleting existing chunks from Pinecone...");
+            pineconeSearchService.deleteAllChunks();
 
             // Upsert to Pinecone
             logger.info("Upserting {} chunks to Pinecone...", chunks.size());
@@ -85,64 +90,45 @@ public class EmbeddingGeneratorCommand implements ApplicationRunner {
         }
     }
 
-    private List<DocumentChunk> parseDocumentation() throws IOException {
-        logger.info("Loading documentation from: {}", documentationFile.getFilename());
+    /**
+     * The breadcrumb gives chunks that are mostly code the context of their section, for example the dialect.
+     */
+    static String embeddingText(DocumentChunk chunk) {
+        return chunk.breadcrumb() + "\n\n" + chunk.content();
+    }
 
-        Document fullDocument = Jsoup.parse(documentationFile.getInputStream(), "UTF-8", "");
-        Elements headers = fullDocument.select("h1, h2, h3, h4, h5, h6");
+    List<DocumentChunk> parseDocumentation() throws IOException {
+        logger.info("Loading documentation from: {}", documentationFile.getDescription());
+
+        List<ManualMarkdownParser.Section> sections;
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(documentationFile.getInputStream(), StandardCharsets.UTF_8))) {
+            sections = ManualMarkdownParser.parse(reader);
+        }
 
         List<DocumentChunk> allChunks = new ArrayList<>();
-        List<String> breadcrumbStack = new ArrayList<>();
+        // Subheadings share the id of their manual section, so chunk indexes continue across them
+        Map<String, Integer> nextChunkIndex = new HashMap<>();
 
-        for (Element header : headers) {
-            int level = Integer.parseInt(header.tagName().substring(1));
-            String title = header.text().trim();
-            String id = header.id();
-
-            if (title.isEmpty()) continue;
-
-            // Update breadcrumb stack
-            while (breadcrumbStack.size() >= level) {
-                breadcrumbStack.removeLast();
-            }
-            breadcrumbStack.add(title);
-
-            String breadcrumb = String.join(" > ", breadcrumbStack);
-            String sectionContent = extractSectionContent(header);
-
-            if (sectionContent.isEmpty()) continue;
-
+        for (ManualMarkdownParser.Section section : sections) {
             // Detect language from content
-            String language = detectLanguage(sectionContent);
+            String language = detectLanguage(section.content());
 
             // Extract keywords
-            List<String> keywords = extractKeywords(title, sectionContent);
+            List<String> keywords = extractKeywords(section.title(), section.content());
 
             // Create chunks with overlap
+            int firstChunkIndex = nextChunkIndex.getOrDefault(section.id(), 0);
             List<DocumentChunk> sectionChunks = createChunks(
-                    id, title, breadcrumb, sectionContent, language, keywords
+                    section.id(), section.title(), section.breadcrumb(), section.content(),
+                    language, keywords, firstChunkIndex
             );
+            nextChunkIndex.put(section.id(), firstChunkIndex + sectionChunks.size());
 
             allChunks.addAll(sectionChunks);
         }
 
         return allChunks;
-    }
-
-    private String extractSectionContent(Element header) {
-        StringBuilder content = new StringBuilder();
-        Element nextElement = header.nextElementSibling();
-        int maxLength = 5000; // Max content per section
-
-        while (nextElement != null && !nextElement.tagName().matches("h[1-6]") && content.length() < maxLength) {
-            String text = nextElement.text().trim();
-            if (!text.isEmpty()) {
-                content.append(text).append("\n\n");
-            }
-            nextElement = nextElement.nextElementSibling();
-        }
-
-        return content.toString().trim();
     }
 
     private String detectLanguage(String content) {
@@ -187,26 +173,27 @@ public class EmbeddingGeneratorCommand implements ApplicationRunner {
             String breadcrumb,
             String content,
             String language,
-            List<String> keywords) {
+            List<String> keywords,
+            int firstChunkIndex) {
 
         List<DocumentChunk> chunks = new ArrayList<>();
 
         if (content.length() <= chunkSize) {
             // Single chunk
             chunks.add(new DocumentChunk(
-                    DocumentChunk.createId(sectionId, 0),
+                    DocumentChunk.createId(sectionId, firstChunkIndex),
                     sectionId,
                     title,
                     breadcrumb,
                     content,
-                    0,
+                    firstChunkIndex,
                     language,
                     keywords
             ));
         } else {
             // Multiple chunks with overlap
             int start = 0;
-            int chunkIndex = 0;
+            int chunkIndex = firstChunkIndex;
 
             while (start < content.length()) {
                 int end = Math.min(start + chunkSize, content.length());

@@ -55,7 +55,6 @@ The application provides jOOQ documentation access through MCP tools with local 
   - `exception/GlobalExceptionHandler.java` - Error handling
 - `src/main/resources/` - Application resources
   - `application.properties` - Spring Boot and MCP server configuration
-  - `docs/manual-single-page.html` - Locally stored jOOQ documentation
   - `static/` - Static web assets
 - `src/test/java/` - Test code
 
@@ -73,10 +72,10 @@ The server provides these tools for AI models:
 ## Development Notes
 
 - All MCP tools are defined in `JooqDocumentationService` with `@Tool` annotations
-- Documentation is stored locally in `resources/docs/` for faster access
+- The Pinecone index is seeded from the Markdown manual at `embedding.manual-url` with `--embedding.generate=true`, which replaces the whole index
 - Full-text search uses TF-IDF scoring via `InvertedIndex` for better relevance
 - `LocalJooqDocumentationService` handles document indexing and search operations
-- JSoup is used for HTML parsing and content extraction
+- `cli/ManualMarkdownParser` splits the Markdown manual into sections
 - Caffeine provides caching to improve performance
 - Error handling includes timeouts, network failures, and buffer overflow prevention
 - Server is configured with increased buffer sizes for SSE (Server-Sent Events)

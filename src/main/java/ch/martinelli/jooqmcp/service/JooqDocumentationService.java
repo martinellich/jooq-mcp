@@ -93,13 +93,8 @@ public class JooqDocumentationService {
                     content = content.substring(0, 500) + "...\n[Content truncated]";
                 }
 
-                if ("java".equals(result.language()) || "sql".equals(result.language())) {
-                    response.append("```").append(result.language()).append("\n");
-                    response.append(content);
-                    response.append("\n```\n\n");
-                } else {
-                    response.append(content).append("\n\n");
-                }
+                // The content is Markdown and already carries its own code fences
+                response.append(content).append("\n\n");
 
                 // Prevent response from getting too large
                 if (response.length() > 2500) {

@@ -95,6 +95,13 @@ public class PineconeSearchService {
     }
 
     /**
+     * Delete all chunks from the default namespace.
+     */
+    public void deleteAllChunks() {
+        pineconeIndex.deleteAll("");
+    }
+
+    /**
      * Upsert document chunks to Pinecone.
      */
     public void upsertChunks(List<DocumentChunk> chunks, List<List<Float>> embeddings) {
