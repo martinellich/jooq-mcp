@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EmbeddingGeneratorCommandTest {
@@ -60,6 +61,26 @@ class EmbeddingGeneratorCommandTest {
         DocumentChunk chunk = parse(manual).getFirst();
 
         assertEquals("Section > Oracle\n\nSELECT 1", EmbeddingGeneratorCommand.embeddingText(chunk));
+    }
+
+    @Test
+    void keywordsContainApiIdentifiers() {
+        List<String> keywords = EmbeddingGeneratorCommand.extractKeywords("Fetching",
+                "List<Book> books = create.selectFrom(BOOK).fetchInto(Book.class); DSLContext ctx; SELECT TITLE");
+
+        assertTrue(keywords.containsAll(List.of("fetchinto", "selectfrom", "dslcontext", "fetch", "select")));
+        assertFalse(keywords.contains("title"));
+        assertFalse(keywords.contains("book"));
+    }
+
+    @Test
+    void keywordsAreExtractedPerChunk() throws IOException {
+        String manual = "<a id=\"long\"></a>\n## 1. Long\n\n" + "word ".repeat(400) + "fetchInto(Book.class)\n";
+
+        List<DocumentChunk> chunks = parse(manual);
+
+        assertFalse(chunks.getFirst().keywords().contains("fetchinto"));
+        assertTrue(chunks.getLast().keywords().contains("fetchinto"));
     }
 
     private static List<DocumentChunk> parse(String manual) throws IOException {

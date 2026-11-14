@@ -17,8 +17,13 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * One-time CLI command to generate embeddings and seed Pinecone index.
@@ -28,6 +33,21 @@ import java.util.Map;
 public class EmbeddingGeneratorCommand implements ApplicationRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(EmbeddingGeneratorCommand.class);
+
+    private static final String[] JOOQ_KEYWORDS = {
+            "jooq", "dsl", "select", "insert", "update", "delete", "merge",
+            "join", "where", "group", "order", "having", "union", "subquery",
+            "transaction", "batch", "stored", "procedure", "function",
+            "codegen", "dialect", "mysql", "postgresql",
+            "oracle", "sqlserver", "h2", "mariadb", "sqlite",
+            "record", "table", "field", "condition", "result", "query",
+            "fetch", "execute", "bind", "parameter", "expression"
+    };
+
+    private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
+
+    // Pinecone allows 40 KB of metadata per vector, the content takes about 1 KB of it
+    private static final int MAX_KEYWORDS = 200;
 
     @Value("${embedding.generate:false}")
     private boolean generateEmbeddings;
@@ -114,14 +134,11 @@ public class EmbeddingGeneratorCommand implements ApplicationRunner {
             // Detect language from content
             String language = detectLanguage(section.content());
 
-            // Extract keywords
-            List<String> keywords = extractKeywords(section.title(), section.content());
-
             // Create chunks with overlap
             int firstChunkIndex = nextChunkIndex.getOrDefault(section.id(), 0);
             List<DocumentChunk> sectionChunks = createChunks(
                     section.id(), section.title(), section.breadcrumb(), section.content(),
-                    language, keywords, firstChunkIndex
+                    language, firstChunkIndex
             );
             nextChunkIndex.put(section.id(), firstChunkIndex + sectionChunks.size());
 
@@ -142,29 +159,52 @@ public class EmbeddingGeneratorCommand implements ApplicationRunner {
         return "text";
     }
 
-    private List<String> extractKeywords(String title, String content) {
-        List<String> keywords = new ArrayList<>();
-        String combined = (title + " " + content).toLowerCase();
+    /**
+     * Keywords for the lexical part of the hybrid search: the jOOQ terms from a fixed list plus the API
+     * identifiers in the text, so that a query for a method name like fetchInto finds the chunk that uses it.
+     * Everything is lowercased, as the query side lowercases its terms too.
+     */
+    static List<String> extractKeywords(String title, String content) {
+        String combined = title + " " + content;
+        String lowerCombined = combined.toLowerCase(Locale.ROOT);
 
-        // Extract jOOQ-specific keywords
-        String[] jooqKeywords = {
-                "jooq", "dsl", "select", "insert", "update", "delete", "merge",
-                "join", "where", "group", "order", "having", "union", "subquery",
-                "transaction", "batch", "stored", "procedure", "function",
-                "code generation", "codegen", "dialect", "mysql", "postgresql",
-                "oracle", "sqlserver", "h2", "mariadb", "sqlite",
-                "record", "table", "field", "condition", "result", "query",
-                "fetch", "execute", "bind", "parameter", "expression"
-        };
-
-        for (String keyword : jooqKeywords) {
-            if (combined.contains(keyword)) {
+        Set<String> keywords = new LinkedHashSet<>();
+        for (String keyword : JOOQ_KEYWORDS) {
+            if (lowerCombined.contains(keyword)) {
                 keywords.add(keyword);
             }
         }
 
-        // Limit to top keywords
-        return keywords.stream().distinct().limit(10).toList();
+        Matcher matcher = IDENTIFIER.matcher(combined);
+        while (matcher.find() && keywords.size() < MAX_KEYWORDS) {
+            String identifier = matcher.group();
+            if (identifier.length() > 2 && (isMethodCall(combined, matcher.end()) || isMixedCase(identifier))) {
+                keywords.add(identifier.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        return List.copyOf(keywords);
+    }
+
+    private static boolean isMethodCall(String text, int identifierEnd) {
+        return identifierEnd < text.length() && text.charAt(identifierEnd) == '(';
+    }
+
+    /**
+     * Identifiers like fetchInto, DSLContext or RecordMapper, but not SELECT or plain words.
+     */
+    private static boolean isMixedCase(String identifier) {
+        boolean innerUpperCase = false;
+        boolean lowerCase = false;
+        for (int i = 0; i < identifier.length(); i++) {
+            char c = identifier.charAt(i);
+            if (Character.isLowerCase(c)) {
+                lowerCase = true;
+            } else if (i > 0 && Character.isUpperCase(c)) {
+                innerUpperCase = true;
+            }
+        }
+        return innerUpperCase && lowerCase;
     }
 
     private List<DocumentChunk> createChunks(
@@ -173,7 +213,6 @@ public class EmbeddingGeneratorCommand implements ApplicationRunner {
             String breadcrumb,
             String content,
             String language,
-            List<String> keywords,
             int firstChunkIndex) {
 
         List<DocumentChunk> chunks = new ArrayList<>();
@@ -188,7 +227,7 @@ public class EmbeddingGeneratorCommand implements ApplicationRunner {
                     content,
                     firstChunkIndex,
                     language,
-                    keywords
+                    extractKeywords(title, content)
             ));
         } else {
             // Multiple chunks with overlap
@@ -217,7 +256,7 @@ public class EmbeddingGeneratorCommand implements ApplicationRunner {
                             chunkContent,
                             chunkIndex,
                             language,
-                            keywords
+                            extractKeywords(title, chunkContent)
                     ));
                     chunkIndex++;
                 }

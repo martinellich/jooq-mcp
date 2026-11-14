@@ -12,8 +12,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -23,7 +25,12 @@ import java.util.Map;
 public class PineconeSearchService {
 
     private static final Logger logger = LoggerFactory.getLogger(PineconeSearchService.class);
-    private static final double MIN_SCORE_THRESHOLD = 0.5; // Filter out low-relevance results
+    /**
+     * Drops semantic matches that are unrelated to the query. text-embedding-3-small gives even the right chunk
+     * a cosine similarity of only 0.2 to 0.5 for short queries, so a higher cutoff loses every match of a
+     * one-word query. Keyword matches skip the cutoff, because they contain the term.
+     */
+    private static final double MIN_SEMANTIC_SCORE = 0.2;
 
     private final Index pineconeIndex;
     private final OpenAiEmbeddingService embeddingService;
@@ -54,7 +61,7 @@ public class PineconeSearchService {
                 true   // include metadata
         );
 
-        return convertToSearchResults(response.getMatchesList());
+        return convertToSearchResults(response.getMatchesList(), MIN_SEMANTIC_SCORE);
     }
 
     /**
@@ -91,7 +98,7 @@ public class PineconeSearchService {
                 true   // include metadata
         );
 
-        return convertToSearchResults(response.getMatchesList());
+        return convertToSearchResults(response.getMatchesList(), 0);
     }
 
     /**
@@ -144,15 +151,15 @@ public class PineconeSearchService {
         logger.info("Completed upserting {} chunks", chunks.size());
     }
 
-    private List<SearchResult> convertToSearchResults(List<ScoredVectorWithUnsignedIndices> matches) {
+    private List<SearchResult> convertToSearchResults(List<ScoredVectorWithUnsignedIndices> matches, double minScore) {
         List<SearchResult> results = new ArrayList<>();
 
         for (ScoredVectorWithUnsignedIndices match : matches) {
             double score = match.getScore();
 
             // Filter out low-relevance results
-            if (score < MIN_SCORE_THRESHOLD) {
-                logger.debug("Filtering out result with score {} (below threshold {})", score, MIN_SCORE_THRESHOLD);
+            if (score < minScore) {
+                logger.debug("Filtering out result with score {} (below threshold {})", score, minScore);
                 continue;
             }
 
@@ -181,17 +188,17 @@ public class PineconeSearchService {
         return defaultValue;
     }
 
-    private List<String> extractKeywords(String query) {
-        // Simple keyword extraction: split by whitespace and filter short words
-        return List.of(query.toLowerCase().split("\\s+"))
-                .stream()
+    static List<String> extractKeywords(String query) {
+        // Split at everything that can't be part of an identifier, so that "fetchInto()" or "DSL.using"
+        // yield the same terms as the identifiers indexed by EmbeddingGeneratorCommand
+        return Arrays.stream(query.toLowerCase(Locale.ROOT).split("[^a-z0-9_]+"))
                 .filter(word -> word.length() > 2)
                 .filter(word -> !isStopWord(word))
                 .distinct()
                 .toList();
     }
 
-    private boolean isStopWord(String word) {
+    private static boolean isStopWord(String word) {
         return List.of("the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by", "from", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "may", "might", "must", "shall", "can", "this", "that", "these", "those", "what", "which", "who", "whom", "whose", "where", "when", "why", "how").contains(word);
     }
 
