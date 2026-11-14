@@ -644,8 +644,8 @@
                 <div class="feature-card">
                     <h3>searchDocumentation</h3>
                     <p>
-                        Search through jOOQ documentation using advanced full-text search with TF-IDF scoring. 
-                        Find relevant information about any jOOQ feature, SQL operation, or concept quickly.
+                        Search the jOOQ manual with hybrid search: semantic search on OpenAI embeddings combined
+                        with keyword search, so both concepts and exact API names like <code>fetchInto</code> are found.
                     </p>
                 </div>
                 <div class="feature-card">
@@ -746,7 +746,7 @@
         <div class="container">
             <p><b>jOOQ  MCP Server</b> Version @project.version@</p>
             <p>
-                Built with Spring Boot 3.5.4 and Spring AI 1.0.0
+                Built with Spring Boot @project.parent.version@ and Spring AI @spring-ai.version@
             </p>
             <p style="margin-top: 1rem;">
                 Created by <a href="https://martinelli.ch" target="_blank">Simon Martinelli</a>
